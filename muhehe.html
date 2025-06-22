@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Kembang Api & Bunga - Ulang Tahun</title>
+  <style>
+    /* Global Reset */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: #000011; /* Dark blue background */
+      overflow: hidden; /* Hide overflow from animations */
+      height: 100vh;
+      font-family: 'Segoe UI', sans-serif;
+      position: relative; /* Needed for absolute positioning of children */
+      display: flex; /* For centering the message */
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* Star field - Static background elements */
+    .star {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      background: white;
+      border-radius: 50%;
+      opacity: 0.6;
+      box-shadow: 0 0 4px white;
+      z-index: 1; /* Lowest z-index */
+    }
+
+    /* Sparkles for fireworks */
+    .spark {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: hsl(0, 100%, 70%);
+      border-radius: 50%;
+      pointer-events: none; /* Do not interfere with mouse events */
+      z-index: 3; /* Below flash, above stars */
+    }
+
+    @keyframes explode {
+      0% {
+        transform: translate(0, 0);
+        opacity: 1;
+        filter: brightness(1.5);
+      }
+      100% {
+        transform: translate(var(--x), var(--y));
+        opacity: 0;
+        filter: brightness(1);
+      }
+    }
+
+    .explode {
+      animation: explode 1s ease-out forwards;
+    }
+
+    /* Flash effect (subtle white flash) */
+    .flash {
+      position: absolute;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(255, 255, 255, 0.2);
+      opacity: 0;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: 10; /* Highest z-index for flash effect */
+      mix-blend-mode: screen; /* Blends with background for a lighter effect */
+    }
+
+    .flash.active {
+      animation: flashAnim 0.3s ease-in-out forwards;
+    }
+
+    @keyframes flashAnim {
+      0% { opacity: 0.4; }
+      100% { opacity: 0; }
+    }
+
+    /* Birthday Message Styles */
+    .birthday-message-container {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      z-index: 5; /* Above sparks, below flash */
+      color: white;
+      text-shadow: 0 0 15px rgba(255,255,255,0.8), 0 0 25px rgba(255,255,255,0.6);
+      padding: 20px;
+      animation: fadeInText 1.5s ease-out forwards;
+    }
+
+    .birthday-message-container h1 {
+      font-size: clamp(2.5em, 8vw, 5em); /* Responsive font size */
+      margin-bottom: 15px;
+      letter-spacing: 2px;
+    }
+
+    .birthday-message-container p {
+      font-size: clamp(1em, 3vw, 1.8em); /* Responsive font size */
+      font-style: italic;
+      opacity: 0.9;
+    }
+
+    @keyframes pulsate {
+      0% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(1.05); opacity: 0.9; }
+    }
+
+    @keyframes fadeInText {
+      0% { opacity: 0; transform: translate(-50%, -60%); }
+      100% { opacity: 1; transform: translate(-50%, -50%); }
+    }
+
+    /* --- New Styles for Flower Field --- */
+    .flower-field-container {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 30vh; /* Occupy bottom 30% of viewport height */
+      overflow: hidden;
+      z-index: 4; /* Above fireworks, below message */
+      pointer-events: none; /* Allow clicks to pass through */
+    }
+
+    .grass-blade {
+      position: absolute;
+      width: 2vw; /* Responsive width */
+      height: 0; /* Starts at 0 height for grow animation */
+      background: linear-gradient(to top, #4CAF50, #8BC34A); /* Green gradient */
+      border-radius: 50% 50% 0 0; /* Pointed top */
+      bottom: 0;
+      left: var(--left-pos); /* Position set by JS */
+      transform-origin: bottom center;
+      animation: growGrass 3s ease-out forwards;
+      opacity: 0;
+    }
+
+    @keyframes growGrass {
+      0% { height: 0; opacity: 0; transform: scaleY(0); }
+      30% { opacity: 1; transform: scaleY(1); } /* Grow phase */
+      100% { height: var(--final-height); opacity: 1; transform: scaleY(1); }
+    }
+
+    .flower-stem {
+      position: absolute;
+      width: 0.8vw; /* Responsive width */
+      height: 0; /* Starts at 0 height for grow animation */
+      background: #689F38; /* Darker green for stem */
+      border-radius: 5px;
+      bottom: 0;
+      left: var(--left-pos);
+      transform-origin: bottom center;
+      z-index: 5; /* Above grass */
+      animation: growStem 2.5s ease-out forwards;
+      animation-delay: var(--delay);
+      opacity: 0;
+    }
+
+    @keyframes growStem {
+      0% { height: 0; opacity: 0; }
+      50% { opacity: 1; transform: scaleY(1); } /* Grow phase */
+      100% { height: var(--final-height); opacity: 1; transform: scaleY(1); }
+    }
+
+    .flower-petal {
+      position: absolute;
+      width: 2vw;
+      height: 3vw;
+      background: var(--petal-color); /* Color set by JS */
+      border-radius: 50% 50% 0 0;
+      transform-origin: bottom center;
+      opacity: 0;
+      animation: bloom 1.5s ease-out forwards;
+      animation-delay: var(--delay); /* Matches stem delay */
+      z-index: 6; /* Above stem */
+    }
+
+    @keyframes bloom {
+      0% { transform: scale(0) translateY(20px); opacity: 0; }
+      100% { transform: scale(1) translateY(0); opacity: 1; }
+    }
+
+    /* Example of a tulip structure using multiple petals */
+    .flower-container {
+        position: absolute;
+        bottom: 0;
+        left: var(--left-pos);
+        transform: translateX(-50%); /* Center the flower on its left-pos */
+        /* Animation is handled by child elements (stem, petals) */
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Flash Light -->
+  <div class="flash" id="flash"></div>
+
+  <!-- Birthday Message Container -->
+  <div class="birthday-message-container">
+    <h1>日月增华，年岁新。</h1>
+    <p>生日快乐，愿福满乾坤。</p>
+  </div>
+
+  <!-- Stars (Generated by JS) -->
+  <script>
+    const totalStars = 150;
+    for (let i = 0; i < totalStars; i++) {
+      const star = document.createElement('div');
+      star.className = 'star';
+      star.style.left = `${Math.random() * 100}%`;
+      star.style.top = `${Math.random() * 100}%`;
+      star.style.width = star.style.height = `${Math.random() * 2 + 1}px`;
+      document.body.appendChild(star);
+    }
+  </script>
+
+  <!-- Fireworks Logic (Existing) -->
+  <script>
+    // Function to create a firework at x,y with aggressive burst
+    function createFirework(x, y) {
+      const count = 60;
+      const flash = document.getElementById('flash');
+
+      for (let i = 0; i < count; i++) {
+        const spark = document.createElement('div');
+        spark.className = 'spark';
+        spark.style.left = x + 'px';
+        spark.style.top = y + 'px';
+
+        const angle = Math.random() * 2 * Math.PI;
+        const speed = Math.random() * 150 + 50; // Increased speed for wider spread
+        const finalX = Math.cos(angle) * speed + 'px';
+        const finalY = Math.sin(angle) * speed + 'px';
+
+        spark.style.setProperty('--x', finalX);
+        spark.style.setProperty('--y', finalY);
+
+        // Dynamic color and size
+        spark.style.background = `hsl(${Math.random() * 360}, 100%, 70%)`;
+        spark.style.width = spark.style.height = `${Math.random() * 4 + 2}px`;
+
+        document.body.appendChild(spark);
+        spark.classList.add('explode');
+
+        setTimeout(() => {
+          spark.remove();
+        }, 1000);
+      }
+
+      // Add subtle flash effect
+      flash.classList.add('active');
+      setTimeout(() => flash.classList.remove('active'), 300);
+    }
+
+    // Launch fireworks every second randomly across the screen
+    setInterval(() => {
+      const x = window.innerWidth * Math.random();
+      // Ensure fireworks burst in the upper 60% of the screen
+      const y = window.innerHeight * Math.random() * 0.6;
+      createFirework(x, y);
+    }, 600);
+  </script>
+
+  <!-- Flower Field Logic (New) -->
+  <div class="flower-field-container"></div>
+
+  <script>
+    const flowerFieldContainer = document.querySelector('.flower-field-container');
+    const numberOfGroundElements = 30; // Jumlah total "slot" untuk menempatkan elemen di tanah
+    const minLeft = 5; // Posisi kiri minimum dalam persentase
+    const maxLeft = 95; // Posisi kiri maksimum dalam persentase
+
+    const flowerColors = [
+      '#FF6347', // Merah (Tomato)
+      '#FFD700', // Kuning (Gold)
+      '#9932CC', // Ungu (DarkOrchid)
+      '#FFA500', // Oranye
+      '#DC143C'  // Merah Tua (Crimson)
+    ];
+
+    // Fungsi untuk membuat bunga tulip
+    function createTulip(leftPos, delay) {
+        const flowerContainer = document.createElement('div');
+        flowerContainer.className = 'flower-container';
+        flowerContainer.style.setProperty('--left-pos', `${leftPos}%`);
+        flowerFieldContainer.appendChild(flowerContainer);
+
+        const stemHeight = Math.random() * 8 + 12; // Tinggi batang acak (12-20vh)
+        const stem = document.createElement('div');
+        stem.className = 'flower-stem';
+        stem.style.setProperty('--final-height', `${stemHeight}vh`);
+        stem.style.setProperty('--delay', `${delay}s`);
+        flowerContainer.appendChild(stem);
+
+        const petalColor = flowerColors[Math.floor(Math.random() * flowerColors.length)];
+
+        const petalCount = 4; // Jumlah kelopak untuk tampilan tulip sederhana
+        for (let i = 0; i < petalCount; i++) {
+            const petal = document.createElement('div');
+            petal.className = 'flower-petal';
+            petal.style.setProperty('--petal-color', petalColor);
+            petal.style.setProperty('--delay', `${delay + 0.5 + (i * 0.1)}s`); // Kelopak mekar sedikit setelah batang
+            petal.style.width = `${Math.random() * 1.5 + 2}vw`; /* Lebar bervariasi */
+            petal.style.height = `${Math.random() * 2 + 3}vw`; /* Tinggi bervariasi */
+            
+            const petalOffset = stemHeight * 0.8; // Kira-kira di bagian atas batang
+            petal.style.bottom = `${petalOffset}vh`;
+            petal.style.left = `calc(50% + ${Math.sin(i * Math.PI / 2) * 0.8}vw)`; /* Sebarkan kelopak di sekitar */
+            petal.style.transform = `translateX(-50%) rotate(${i * 90}deg)`; /* Rotasi untuk sudut berbeda */
+            
+            flowerContainer.appendChild(petal);
+        }
+    }
+
+    // Menghasilkan bidang campuran rumput dan bunga di slot yang berbeda
+    for (let i = 0; i < numberOfGroundElements; i++) {
+      // Menghitung posisi "slot"
+      // Ini mendistribusikan elemen lebih merata di seluruh lebar
+      const slotPercentage = (i / (numberOfGroundElements - 1)) * (maxLeft - minLeft) + minLeft;
+      // Tambahkan offset acak kecil di dalam slotnya agar tidak terlalu kaku
+      const leftPos = slotPercentage + (Math.random() * ( (maxLeft - minLeft) / numberOfGroundElements * 0.8) - ( (maxLeft - minLeft) / numberOfGroundElements * 0.4) ); 
+
+      // 40% peluang untuk bunga, 60% untuk rumpun rumput
+      const isFlower = Math.random() < 0.4; 
+
+      const delay = Math.random() * 2.5 + 0.5; // Menunda awal animasi
+
+      if (isFlower) {
+        // Buat bunga
+        createTulip(leftPos, delay);
+      } else {
+        // Buat rumpun bilah rumput
+        const bladesInClump = Math.floor(Math.random() * 3) + 2; // 2 hingga 4 bilah per rumpun
+        for (let j = 0; j < bladesInClump; j++) {
+          const grass = document.createElement('div');
+          grass.className = 'grass-blade';
+          // Sedikit variasi dalam posisi kiri untuk bilah di dalam rumpun
+          grass.style.setProperty('--left-pos', `${leftPos + (Math.random() * 1 - 0.5)}%`); // +/- 0.5% di sekitar tengah slot
+          grass.style.setProperty('--final-height', `${Math.random() * 10 + 10}vh`); /* Tinggi bervariasi */
+          grass.style.animationDelay = `${delay + (j * 0.1)}s`; // Menunda animasi di dalam rumpun
+          flowerFieldContainer.appendChild(grass);
+        }
+      }
+    }
+
+  </script>
+
+</body>
+</html>
